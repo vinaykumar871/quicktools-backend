@@ -36,7 +36,7 @@ app.post("/generate-quiz", async (req, res) => {
   let text = "";
 
   try {
-    const { topic, level } = req.body;
+    const { topic = "General", level = "medium" } = req.body;
 
     const prompt = `
 Generate 50 placement-level MCQs for ${topic} (${level}).
@@ -57,30 +57,16 @@ Format:
       model: "llama-3.1-8b-instant",
     });
 
-    // ✅ assign AFTER API call
-    text = r.choices[0].message.content;
+    // ✅ Assign response
+    text = r?.choices?.[0]?.message?.content || "";
 
   } catch (err) {
     console.log("❌ GROQ ERROR:", err);
 
-    // ✅ fallback if API fails
     return res.json({
       questions: [
         {
-          q: "Fallback: 2 + 2 = ?",
-          options: ["2", "3", "4", "5"],
-          answer: "4"
-        }
-      ]
-    });
-  }
-
-  // ✅ safety check AFTER assignment
-  if (!text) {
-    return res.json({
-      questions: [
-        {
-          q: "Fallback: API returned empty response",
+          q: "Fallback: API failed",
           options: ["Retry", "Reload", "Check server", "Wait"],
           answer: "Retry"
         }
@@ -88,15 +74,33 @@ Format:
     });
   }
 
-  // ✅ clean AI output
+  // ✅ Empty response check
+  if (!text) {
+    return res.json({
+      questions: [
+        {
+          q: "Fallback: Empty AI response",
+          options: ["Retry", "Reload", "Check server", "Wait"],
+          answer: "Retry"
+        }
+      ]
+    });
+  }
+
+  // ✅ Clean AI output
   text = text
     .replace(/```json/g, "")
     .replace(/```/g, "")
     .replace(/\n/g, "")
     .trim();
 
+  // ✅ Fix incomplete JSON
+  if (!text.startsWith("[")) {
+    text = "[" + text;
+  }
+
   if (!text.endsWith("]")) {
-    text += "]";
+    text = text + "]";
   }
 
   let questions;
@@ -104,9 +108,8 @@ Format:
   try {
     questions = JSON.parse(text);
   } catch (e) {
-    console.log("❌ JSON ERROR:", text);
+    console.log("❌ JSON ERROR:", e);
 
-    // ✅ fallback if JSON fails
     questions = [
       {
         q: "Fallback: 10 + 5 = ?",
@@ -116,38 +119,16 @@ Format:
     ];
   }
 
+  // ✅ Ensure array format
+  if (!Array.isArray(questions)) {
+    questions = [questions];
+  }
+
   // ✅ FINAL RESPONSE
   res.json({ questions });
 });
 
-  // 🔽 NOW PARSE JSON (SECOND BLOCK)
-  text = text
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .replace(/\n/g, "")
-    .trim();
 
-  if (!text.endsWith("]")) {
-    text += "]";
-  }
-
-  let questions;
-
-  try {
-    questions = JSON.parse(text);
-  } catch (e) {
-    console.log("❌ JSON ERROR:", text);
-
-    questions = [
-      {
-        q: "Fallback: 10 + 5 = ?",
-        options: ["10","15","20","25"],
-        answer: "15"
-      }
-    ];
-  }
-
-  res.json({ questions });
 
 
 /* ================= AI EXPLANATION ================= */
