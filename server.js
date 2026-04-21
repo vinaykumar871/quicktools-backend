@@ -33,7 +33,7 @@ const groq = new Groq({
 app.post("/generate-quiz", async (req, res) => {
   console.log("🔥 Quiz API called");
 
-let text = "";
+  let text = "";
 
   try {
     const { topic, level } = req.body;
@@ -57,13 +57,68 @@ Format:
       model: "llama-3.1-8b-instant",
     });
 
+    // ✅ assign AFTER API call
     text = r.choices[0].message.content;
 
   } catch (err) {
     console.log("❌ GROQ ERROR:", err);
 
-    
+    // ✅ fallback if API fails
+    return res.json({
+      questions: [
+        {
+          q: "Fallback: 2 + 2 = ?",
+          options: ["2", "3", "4", "5"],
+          answer: "4"
+        }
+      ]
+    });
   }
+
+  // ✅ safety check AFTER assignment
+  if (!text) {
+    return res.json({
+      questions: [
+        {
+          q: "Fallback: API returned empty response",
+          options: ["Retry", "Reload", "Check server", "Wait"],
+          answer: "Retry"
+        }
+      ]
+    });
+  }
+
+  // ✅ clean AI output
+  text = text
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .replace(/\n/g, "")
+    .trim();
+
+  if (!text.endsWith("]")) {
+    text += "]";
+  }
+
+  let questions;
+
+  try {
+    questions = JSON.parse(text);
+  } catch (e) {
+    console.log("❌ JSON ERROR:", text);
+
+    // ✅ fallback if JSON fails
+    questions = [
+      {
+        q: "Fallback: 10 + 5 = ?",
+        options: ["10", "15", "20", "25"],
+        answer: "15"
+      }
+    ];
+  }
+
+  // ✅ FINAL RESPONSE
+  res.json({ questions });
+});
 
   // 🔽 NOW PARSE JSON (SECOND BLOCK)
   text = text
@@ -93,7 +148,7 @@ Format:
   }
 
   res.json({ questions });
-});
+
 
 /* ================= AI EXPLANATION ================= */
 app.post("/explain", async (req, res) => {
