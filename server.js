@@ -33,7 +33,7 @@ const groq = new Groq({
 app.post("/generate-quiz", async (req, res) => {
   console.log("🔥 Quiz API called");
 
-
+let text = "";
 
   try {
     const { topic, level } = req.body;
@@ -462,8 +462,6 @@ app.get("/contacts", async (req, res) => {
     res.json([]);
   }
 
-  
- const PORT = process.env.PORT || 5000;
 
  
 });
