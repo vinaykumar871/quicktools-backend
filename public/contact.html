@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Contact QuickTools - Get Support</title>
+  <meta name="description" content="Contact QuickTools for support, queries, or feedback.">
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo">
+    <img src="assets/logo.png" alt="logo">
+    <span>QuickTools</span>
+  </div>
+
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html">Tools</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="privacy.html">Privacy</a></li>
+  </ul>
+</nav>
+
+<!-- CONTACT -->
+<section class="tool-page">
+
+  <h1>Contact Us</h1>
+
+  <div class="tool-card" style="max-width:600px; margin:auto;">
+
+    <p>Have questions or feedback? Reach out to us.</p>
+
+    <!-- EMAIL (IMPORTANT FOR ADSENSE) -->
+    <p><strong>Email:</strong> quicktoolsstudent@gmail.com</p>
+
+    <br>
+
+    <!-- FORM -->
+    <label>Name</label>
+    <input type="text" id="name" placeholder="Your Name">
+
+    <label>Email</label>
+    <input type="email" id="email" placeholder="Your Email">
+
+    <label>Message</label>
+    <textarea id="message" placeholder="Your Message"></textarea>
+
+    <button onclick="sendMessage()">Send Message</button>
+
+    <p id="status" style="margin-top:10px;"></p>
+
+  </div>
+
+</section>
+
+<script>
+async function sendMessage() {
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const message = document.getElementById("message").value.trim();
+
+  if (!name || !email || !message) {
+    document.getElementById("status").innerText = "⚠ Please fill all fields";
+    return;
+  }
+
+  try {
+    const res = await fetch("https://quicktools-backend-b775.onrender.com/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name, email, message })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById("status").innerText = "✅ Message sent successfully!";
+      
+      // CLEAR FORM (UX FIX)
+      document.getElementById("name").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("message").value = "";
+
+    } else {
+      document.getElementById("status").innerText = "❌ Failed to send!";
+    }
+
+  } catch (err) {
+    document.getElementById("status").innerText = "⚠ Server error!";
+  }
+}
+</script>
+
+<!-- FOOTER -->
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+
+</body>
+</html>

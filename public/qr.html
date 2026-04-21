@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate QR Tool - QuickTools</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="style.css">
+
+<!-- QR GENERATOR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- QR SCANNER -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: #eef2ff;
+  padding: 20px;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+  text-align: center;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+
+#qrcode {
+  margin-top: 20px;
+  position: relative;
+}
+
+#logo {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+}
+
+#reader {
+  margin-top: 20px;
+}
+
+.history-item {
+  background: white;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📱 Ultimate QR Tool</h1>
+
+<select id="type" onchange="changeType()">
+  <option value="text">Text / URL</option>
+  <option value="whatsapp">WhatsApp</option>
+  <option value="wifi">WiFi</option>
+  <option value="email">Email</option>
+</select>
+
+<input id="qrText" placeholder="Enter text">
+
+<input id="phone" placeholder="Phone" style="display:none;">
+<input id="message" placeholder="Message" style="display:none;">
+
+<input id="ssid" placeholder="WiFi Name" style="display:none;">
+<input id="wifiPass" placeholder="Password" style="display:none;">
+
+<input id="email" placeholder="Email" style="display:none;">
+<input id="subject" placeholder="Subject" style="display:none;">
+
+<label>Color</label>
+<input type="color" id="color" value="#000000">
+
+<label>Logo</label>
+<input type="file" id="logoInput">
+
+<button onclick="generateQR()">Generate</button>
+<button onclick="downloadQR()">⬇ Download</button>
+<button onclick="shareQR()">📤 Share</button>
+
+<div id="qrWrapper">
+  <div id="qrcode"></div>
+  <img id="logo">
+</div>
+
+<hr>
+
+<h2>📷 Scan QR</h2>
+<button onclick="startScanner()">Start Camera</button>
+<div id="reader"></div>
+<p id="scanResult"></p>
+
+<hr>
+
+<h3>🕘 History</h3>
+<div id="history"></div>
+
+</div>
+
+<script>
+
+let qr;
+let scanner;
+
+// CHANGE TYPE
+function changeType() {
+  document.querySelectorAll("input").forEach(i => i.style.display="none");
+
+  const t = type.value;
+
+  if (t==="text") qrText.style.display="block";
+  if (t==="whatsapp") { phone.style.display="block"; message.style.display="block"; }
+  if (t==="wifi") { ssid.style.display="block"; wifiPass.style.display="block"; }
+  if (t==="email") { email.style.display="block"; subject.style.display="block"; }
+}
+
+// GENERATE QR
+function generateQR() {
+
+  let data="";
+  const t = type.value;
+
+  if (t==="text") data = qrText.value;
+
+  if (t==="whatsapp")
+    data=`https://wa.me/${phone.value}?text=${encodeURIComponent(message.value)}`;
+
+  if (t==="wifi")
+    data=`WIFI:T:WPA;S:${ssid.value};P:${wifiPass.value};;`;
+
+  if (t==="email")
+    data=`mailto:${email.value}?subject=${encodeURIComponent(subject.value)}`;
+
+  if (!data) return alert("Fill data");
+
+
+  qr = new QRCode(qrcode,{
+    text:data,
+    width:200,
+    height:200,
+    colorDark:color.value
+  });
+
+  addLogo();
+  saveHistory(data);
+}
+
+// LOGO
+function addLogo(){
+  const file = logoInput.files[0];
+  if(!file) return;
+
+  const r = new FileReader();
+  r.onload=e=>{
+    logo.src=e.target.result;
+    logo.style.display="block";
+  };
+  r.readAsDataURL(file);
+}
+
+// DOWNLOAD
+function downloadQR(){
+  const img=document.querySelector("#qrcode img");
+  if(!img) return alert("Generate first");
+
+  const a=document.createElement("a");
+  a.href=img.src;
+  a.download="qr.png";
+  a.click();
+}
+
+// SHARE
+async function shareQR() {
+  const img = document.querySelector("#qrcode img");
+
+  if (!img) {
+    alert("Generate QR first!");
+    return;
+  }
+
+  try {
+    const response = await fetch(img.src);
+    const blob = await response.blob();
+
+    const file = new File([blob], "qr.png", { type: "image/png" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: "QR Code",
+        text: "Scan this QR",
+        files: [file]
+      });
+    } else {
+      alert("Sharing not supported on this device");
+    }
+
+  } catch (err) {
+    alert("Sharing failed");
+    console.error(err);
+  }
+}
+
+// SCANNER
+function startScanner(){
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    { facingMode: "environment" },
+    { fps:10, qrbox:250 },
+    qrCodeMessage => {
+      scanResult.innerText="Result: "+qrCodeMessage;
+
+      if(qrCodeMessage.startsWith("http")){
+        window.open(qrCodeMessage,"_blank");
+      }
+
+      scanner.stop();
+    }
+  );
+}
+
+// HISTORY
+function saveHistory(data){
+  let h=JSON.parse(localStorage.getItem("qrHistory"))||[];
+  h.unshift(data);
+  h=h.slice(0,5);
+  localStorage.setItem("qrHistory",JSON.stringify(h));
+  loadHistory();
+}
+
+function loadHistory(){
+  const h=JSON.parse(localStorage.getItem("qrHistory"))||[];
+  history.innerHTML="";
+
+  h.forEach(i=>{
+    history.innerHTML+=`
+      <div class="history-item" onclick="reuse('${i}')">${i}</div>
+    `;
+  });
+}
+
+function reuse(d){
+  qrText.value=d;
+  generateQR();
+}
+
+loadHistory();
+
+</script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

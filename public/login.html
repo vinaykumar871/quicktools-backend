@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - QuickTools</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="auth-page">
+
+<div class="login-container">
+  <h2>Login</h2>
+
+  <!-- EMAIL -->
+  <input type="email" id="email" placeholder="Enter email">
+
+  <!-- PASSWORD -->
+  <div class="password-box">
+  <input type="password" id="password" placeholder="Password" />
+  <span class="toggle-eye" onclick="togglePassword()">👁️</span>
+</div>
+
+  <p id="strengthText"></p>
+
+  <button onclick="login()">Login</button>
+
+  <button onclick="googleLogin()" style="background:#db4437; margin-top:10px;">
+  Login with Google
+</button>
+
+  <p id="msg"></p>
+
+  <p>Don't have account? <a href="signup.html">Sign Up</a></p>
+</div>
+
+<!-- 🔥 Firebase Scripts (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<!-- 🔥 Your JS Files -->
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  // 👁️ Toggle password
+  window.togglePassword = function () {
+    const pass = document.getElementById("password");
+    pass.type = pass.type === "password" ? "text" : "password";
+  };
+
+  // 🔐 EMAIL LOGIN
+  window.login = function () {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (!email || !password) {
+      document.getElementById("msg").innerText = "⚠️ Fill all fields";
+      return;
+    }
+
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+
+        localStorage.setItem("user", user.email);
+
+        if (user.email === "quicktoolsstudent@gmail.com") {
+          window.location.href = "admin.html";
+        } else {
+          window.location.href = "dashboard.html";
+        }
+      })
+      .catch((error) => {
+        document.getElementById("msg").innerText = error.message;
+      });
+  };
+
+  // 🔥 GOOGLE LOGIN
+  window.googleLogin = function () {
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    firebase.auth().signInWithPopup(provider)
+      .then((result) => {
+        const user = result.user;
+
+        localStorage.setItem("user", user.email);
+
+        window.location.href = "dashboard.html";
+      })
+      .catch((error) => {
+        document.getElementById("msg").innerText = error.message;
+        console.error(error);
+      });
+  };
+
+});
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cover Letter Generator</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: #eef2ff;
+  padding: 20px;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1000px;
+  margin: auto;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+}
+
+/* TEMPLATE GRID */
+.templates {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.template-card {
+  border: 2px solid #ddd;
+  padding: 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.template-card:hover {
+  border-color: #4f46e5;
+}
+
+.active-template {
+  border: 2px solid #4f46e5;
+}
+
+/* INPUT */
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+/* BUTTON */
+button {
+  padding: 10px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+/* LETTER */
+.letter {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  margin: 20px auto;
+  background: white;
+  box-sizing: border-box;
+  line-height: 1.7;
+  font-size: 14px;
+
+  text-align: justify;   /* 🔥 IMPORTANT */
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📄 Cover Letter Generator</h2>
+
+<!-- TEMPLATE SELECT -->
+<div class="templates">
+  <div class="template-card" onclick="selectTemplate('modern')">Modern</div>
+  <div class="template-card" onclick="selectTemplate('referral')">Referral</div>
+  <div class="template-card" onclick="selectTemplate('fresher')">Fresher</div>
+  <div class="template-card" onclick="selectTemplate('tech')">Tech</div>
+  <div class="template-card" onclick="selectTemplate('creative')">Creative</div>
+</div>
+
+<!-- FORM -->
+<input id="name" placeholder="Your Name">
+<input id="email" placeholder="Email">
+<input id="phone" placeholder="Phone">
+<input id="company" placeholder="Company Name">
+<input id="role" placeholder="Job Role">
+<input id="referral" placeholder="Referral Name (optional)">
+<textarea id="skills" placeholder="Skills"></textarea>
+
+<button onclick="generateLetter()">Generate</button>
+<button onclick="downloadPDF()">Download PDF</button>
+
+<div id="output" class="letter"></div>
+
+</div>
+
+<script>
+
+let selectedTemplate = "modern";
+
+// 🔥 AUTO-FILL
+const data = JSON.parse(localStorage.getItem("resumeData"));
+if (data) {
+  name.value = data.name || "";
+  email.value = data.email || "";
+  phone.value = data.phone || "";
+  skills.value = data.skills || "";
+}
+
+// SELECT TEMPLATE
+function selectTemplate(type) {
+  selectedTemplate = type;
+
+  document.querySelectorAll(".template-card")
+    .forEach(card => card.classList.remove("active-template"));
+
+  event.target.classList.add("active-template");
+}
+
+// =====================
+// GENERATE LETTER
+// =====================
+function generateLetter() {
+
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const phone = document.getElementById("phone").value;
+  const company = document.getElementById("company").value;
+  const role = document.getElementById("role").value;
+  const skills = document.getElementById("skills").value;
+
+  const today = new Date().toLocaleDateString();
+
+  const letter = `
+<div style="display:flex; justify-content:space-between;">
+  <div>
+    <b style="font-size:18px;">${name}</b><br>
+    ${email}<br>
+    ${phone}
+  </div>
+
+  <div style="text-align:right;">
+    ${today}
+  </div>
+</div>
+
+<hr>
+
+<br>
+
+<b>Hiring Manager</b><br>
+${company}<br><br>
+
+Dear Hiring Manager,<br><br>
+
+<b>Subject:</b> Application for ${role} Position<br><br>
+
+I am writing to express my strong interest in the ${role} position at ${company}. With a solid foundation in ${skills}, I have developed strong technical and problem-solving abilities that allow me to deliver effective and efficient solutions.
+
+During my learning and project experience, I have worked on real-world applications where I applied my knowledge practically. This has helped me improve my analytical thinking, teamwork, and adaptability in dynamic environments.
+
+I am particularly interested in this opportunity because ${company} is known for innovation and growth. I am eager to contribute my skills while continuously learning and improving myself in a professional environment.
+
+My key strengths include:
+<ul>
+<li>Strong understanding of ${skills}</li>
+<li>Ability to learn quickly and adapt</li>
+<li>Problem-solving mindset</li>
+<li>Good communication and teamwork</li>
+</ul>
+
+I am confident that my dedication and enthusiasm will allow me to make a meaningful contribution to your organization.
+
+I would welcome the opportunity to discuss how my skills and passion align with your requirements.
+
+Thank you for considering my application.<br><br>
+
+Sincerely,<br><br>
+
+<b>${name}</b>
+`;
+
+  document.getElementById("output").innerHTML = letter;
+}
+
+// =====================
+// PDF
+// =====================
+function downloadPDF() {
+
+  const element = document.getElementById("output");
+
+  if (!element.innerText.trim()) {
+    alert("Generate letter first!");
+    return;
+  }
+
+  const opt = {
+    margin: 0,
+    filename: 'CoverLetter.pdf',
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2 },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    }
+  };
+
+  html2pdf().set(opt).from(element).save();
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - QuickTools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<h2>Admin Panel</h2>
+
+<p>Total Users: <span id="users">--</span></p>
+<p>Total Scores: <span id="scores">--</span></p>
+
+<script>
+let board=JSON.parse(localStorage.getItem("board")||"[]");
+
+document.getElementById("users").innerText=board.length;
+document.getElementById("scores").innerText=board.reduce((s,b)=>s+b.score,0);
+</script>
+<!-- 🔐 ADMIN PROTECTION -->
+<script>
+const adminEmail = "quicktoolsstudent@gmail.com";
+
+const user = localStorage.getItem("user");
+
+if (!localStorage.getItem("token") || user !== adminEmail) {
+  alert("Access Denied ❌");
+  window.location.href = "index.html";
+}
+</script>
+
+<div class="admin-container">
+
+  <h1>📊 Admin Dashboard</h1>
+
+  <p class="welcome">
+    Welcome, <span id="adminName"></span>
+    <button onclick="logout()">Logout</button>
+  </p>
+
+  <!-- 📊 STATS -->
+  <div class="stats">
+    <div class="box">
+      <h3 id="users">0</h3>
+      <p>Total Users</p>
+    </div>
+
+    <div class="box">
+      <h3 id="messages">0</h3>
+      <p>Total Messages</p>
+    </div>
+  </div>
+
+  <!-- 📩 MESSAGES -->
+  <h2>📩 Contact Messages</h2>
+  <div id="messageList"></div>
+
+  <!-- 👥 USERS -->
+  <h2>👥 Users</h2>
+  <div id="userList"></div>
+
+</div>
+
+<script>
+const backend = "https://quicktools-backend-b775.onrender.com";
+
+// 🔥 TOKEN (IMPORTANT)
+const token = localStorage.getItem("token");
+
+// 👤 Show admin name
+document.getElementById("adminName").innerText = localStorage.getItem("user");
+
+// 🚪 Logout
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+// 📊 Load stats
+async function loadStats() {
+  const res = await fetch(backend + "/stats", {
+    headers: {
+      Authorization: token
+    }
+  });
+
+  const data = await res.json();
+
+  document.getElementById("users").innerText = data.users;
+  document.getElementById("messages").innerText = data.messages;
+}
+
+// 📩 Load messages
+async function loadMessages() {
+  const res = await fetch(backend + "/contacts", {
+    headers: {
+      Authorization: token
+    }
+  });
+
+  const data = await res.json();
+
+  const container = document.getElementById("messageList");
+  container.innerHTML = "";
+
+  data.forEach(msg => {
+    const div = document.createElement("div");
+    div.className = "message-card";
+
+    div.innerHTML = `
+      <h4>${msg.name}</h4>
+      <p>${msg.email}</p>
+      <p>${msg.message}</p>
+      <button onclick="deleteMessage('${msg._id}')">Delete</button>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+// 🗑 Delete message
+async function deleteMessage(id) {
+  await fetch(backend + "/contact/" + id, {
+    method: "DELETE",
+    headers: {
+      Authorization: token
+    }
+  });
+
+  loadMessages();
+  loadStats();
+}
+
+// 👥 Load users
+async function loadUsers() {
+  const res = await fetch(backend + "/users", {
+    headers: {
+      Authorization: token
+    }
+  });
+
+  const data = await res.json();
+
+  const container = document.getElementById("userList");
+  container.innerHTML = "";
+
+  data.forEach(u => {
+
+    const div = document.createElement("div");
+    div.className = "message-card";
+
+    const isAdmin = u.username === "quicktoolsstudent@gmail.com";
+
+    div.innerHTML = `
+      <p>${u.username}</p>
+      ${!isAdmin 
+        ? `<button onclick="deleteUser('${u._id}')">Delete</button>` 
+        : `<span style="color:green">Admin</span>`}
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+// 🗑 Delete user
+async function deleteUser(id) {
+  if (!confirm("Delete this user?")) return;
+
+  await fetch(backend + "/user/" + id, {
+    method: "DELETE",
+    headers: {
+      Authorization: token
+    }
+  });
+
+  loadUsers();
+  loadStats();
+}
+
+// 🚀 Init
+loadStats();
+loadMessages();
+loadUsers();
+</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

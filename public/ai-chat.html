@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat Ultra</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: Poppins, sans-serif;
+  display: flex;
+  height: 100vh;
+  background: #f1f5f9;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px;
+  background: #111827;
+  color: white;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.chat-item {
+  background: #1f2937;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* MAIN */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.header {
+  background: #4f46e5;
+  color: white;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* CHAT */
+.chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+.msg {
+  max-width: 75%;
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.user {
+  background: #4f46e5;
+  color: white;
+  margin-left: auto;
+}
+
+.ai {
+  background: #e2e8f0;
+}
+
+/* INPUT */
+.input-area {
+  display: flex;
+  padding: 10px;
+  background: white;
+  gap: 8px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+}
+
+/* PREVIEW */
+.preview {
+  padding: 10px;
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+
+img.preview-img {
+  max-width: 150px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <button onclick="newChat()">+ New Chat</button>
+  <div id="chatList"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<div class="header">
+  <span>🤖 AI Ultra</span>
+  <select id="model">
+   <option value="llama-3.1-8b-instant">Llama 3.1 Fast ⚡</option>
+   <option value="llama-3.1-70b-versatile">Llama 3.1 Powerful 🔥</option>
+   <option value="mixtral-8x7b-32768">Mixtral</option>
+  </select>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="preview" id="previewBox" style="display:none;"></div>
+
+<!-- INPUT AREA -->
+<div class="input-area">
+
+  <button onclick="openFile()">➕</button>
+  <input type="file" id="file" hidden onchange="handleFile()">
+
+  <input id="input" placeholder="Ask anything...">
+
+  <button onclick="startVoice()">🎤</button>
+  <button onclick="send()">Send</button>
+  <button onclick="stopGen()">Stop</button>
+
+</div>
+
+</div>
+
+<script>
+  
+
+let chats = JSON.parse(localStorage.getItem("aiChats")) || [[]];
+let currentChat = 0;
+let controller;
+let fileContent = "";
+
+// INIT
+renderChats();
+loadChat();
+
+// ================= CHAT =================
+
+function newChat() {
+  chats.push([]);
+  currentChat = chats.length - 1;
+  saveChats();
+  renderChats();
+  loadChat();
+}
+
+function renderChats() {
+  const list = document.getElementById("chatList");
+  list.innerHTML = "";
+
+  chats.forEach((c, i) => {
+
+    let name = c.length > 0 ? c[0].text.slice(0, 20) : "New Chat";
+
+    const div = document.createElement("div");
+    div.className = "chat-item";
+    div.innerText = name;
+
+    div.onclick = () => {
+      currentChat = i;
+      loadChat();
+    };
+
+    list.appendChild(div);
+  });
+}
+
+function loadChat() {
+  const chatBox = document.getElementById("chat");
+  chatBox.innerHTML = "";
+
+  chats[currentChat].forEach(m => {
+    addMessage(m.text, m.type, false);
+  });
+}
+
+function addMessage(text, type, save=true) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+
+  if (type === "ai") {
+    div.innerHTML = marked.parse(text);
+  } else {
+    div.innerText = text;
+  }
+
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = 999999;
+
+  if (save) {
+    chats[currentChat].push({text, type});
+    saveChats();
+  }
+}
+
+function saveChats() {
+  localStorage.setItem("aiChats", JSON.stringify(chats));
+}
+
+// ================= SEND =================
+
+async function send() {
+
+  const input = document.getElementById("input");
+  let text = input.value.trim();
+
+  if (fileContent) {
+    text += "\n\nFile Content:\n" + fileContent;
+    fileContent = "";
+    document.getElementById("previewBox").style.display = "none";
+  }
+
+  if (!text) return;
+
+  addMessage(text, "user");
+  input.value = "";
+
+  const aiDiv = document.createElement("div");
+  aiDiv.className = "msg ai";
+  aiDiv.innerText = "Typing...";
+  document.getElementById("chat").appendChild(aiDiv);
+
+  controller = new AbortController();
+
+  try {
+
+    const messages = [
+      { role: "system", content: "You are a helpful assistant." }
+    ];
+
+    chats[currentChat].forEach(m => {
+      if (m.text && m.text.trim()) {
+        messages.push({
+          role: m.type === "user" ? "user" : "assistant",
+          content: m.text
+        });
+      }
+    });
+
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: document.getElementById("model").value,
+        messages: messages,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+
+    const data = await res.json();
+    console.log("DEBUG:", data);
+
+    if (!data.choices) {
+      aiDiv.innerText = data.error?.message || "API Error ❌";
+      return;
+    }
+
+    const reply = data.choices[0].message.content;
+
+    aiDiv.innerHTML = marked.parse(reply);
+
+    chats[currentChat].push({ text: reply, type: "ai" });
+    saveChats();
+
+  } catch (err) {
+    console.error(err);
+    aiDiv.innerText = "Error ❌";
+  }
+}
+
+// ================= STOP =================
+function stopGen() {
+  if (controller) controller.abort();
+}
+
+// ================= VOICE =================
+function startVoice() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.start();
+
+  recognition.onresult = (e) => {
+    document.getElementById("input").value = e.results[0][0].transcript;
+  };
+}
+
+// ================= FILE =================
+function openFile() {
+  document.getElementById("file").click();
+}
+
+function handleFile() {
+  const file = document.getElementById("file").files[0];
+  const preview = document.getElementById("previewBox");
+
+  if (!file) return;
+
+  preview.style.display = "block";
+
+  if (file.type.startsWith("image")) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.innerHTML = `<img src="${e.target.result}" class="preview-img">`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      fileContent = e.target.result.substring(0, 2000);
+      preview.innerHTML = `📄 ${file.name}`;
+    };
+    reader.readAsText(file);
+  }
+}
+
+// ENTER
+document.getElementById("input").addEventListener("keypress", e => {
+  if (e.key === "Enter") send();
+});
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

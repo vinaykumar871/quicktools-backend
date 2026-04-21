@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Interview Practice</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family:Poppins; background:#eef2ff; }
+.container { max-width:700px; margin:auto; background:white; padding:20px; border-radius:10px; }
+.option { border:1px solid #ccc; padding:10px; margin:5px; cursor:pointer; }
+.selected { background:#4f46e5; color:white; }
+</style>
+</head>
+
+<body>
+
+<div style="text-align:center; margin:20px;">
+  <h1>QuickTools - Free Placement Preparation</h1>
+  <p>Practice aptitude, coding, and AI-powered mock tests for top companies like TCS, Infosys, and Accenture.</p>
+</div>
+
+<div class="container">
+
+<h2>🤖 AI Interview Practice</h2>
+
+<select id="topic">
+<option>Aptitude</option>
+<option>Python</option>
+<option>Java</option>
+</select>
+
+<select id="level">
+<option>easy</option>
+<option>medium</option>
+<option>hard</option>
+</select>
+
+<button onclick="startQuiz()">Start</button>
+<button onclick="buyPremium()">💎 Premium</button>
+
+<div id="timer"></div>
+<div id="quiz"></div>
+<div id="result"></div>
+<canvas id="chart"></canvas>
+<div style="margin:20px 0;">
+  <h3>📚 Preparation Resources</h3>
+
+  <div style="display:flex; gap:15px; flex-wrap:wrap;">
+
+    <a href="aptitude.html" style="padding:15px; background:#f5f5f5; border-radius:10px; text-decoration:none;">
+      📘 Aptitude Questions
+    </a>
+
+    <a href="python.html" style="padding:15px; background:#f5f5f5; border-radius:10px; text-decoration:none;">
+      🐍 Python Interview
+    </a>
+
+    <a href="interview-tips.html" style="padding:15px; background:#f5f5f5; border-radius:10px; text-decoration:none;">
+      🎯 Interview Tips
+    </a>
+
+  </div>
+</div>
+
+</div>
+
+<script>
+
+let questions=[], index=0, answers=[], time=120, timer;
+
+/* PREMIUM */
+function buyPremium(){
+  localStorage.setItem("premium","true");
+  alert("Premium activated");
+}
+
+/* START QUIZ */
+async function startQuiz(){
+
+  document.getElementById("quiz").innerHTML = "⏳ Loading...";
+
+  const today = new Date().toDateString();
+  const last = localStorage.getItem("lastTest");
+
+  if (last === today && !localStorage.getItem("premium")) {
+  alert("Free users: 1 test per day. Upgrade for unlimited.");
+  return;
+}
+
+  localStorage.setItem("lastTest", today);
+
+  const level = document.getElementById("level").value;
+
+  if (level === "hard" && !localStorage.getItem("premium")) {
+    alert("Premium required");
+    return;
+  }
+
+  const topic = document.getElementById("topic").value;
+
+  try {
+    const res = await fetch("https://quicktools-backend-1.onrender.com/generate-quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, level })
+    });
+
+    const data = await res.json();
+    console.log("API RESPONSE:", data);
+    if (!data.questions || data.questions.length === 0) {
+    document.getElementById("quiz").innerHTML = "⚡ Preparing your test..."; 
+         return;
+    }
+
+    questions = data.questions.sort(() => 0.5 - Math.random());
+    index = 0;
+    answers = [];
+
+    startTimer();
+    loadQ();
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("quiz").innerHTML = "❌ Server error";
+  }
+}
+
+/* TIMER */
+function startTimer(){
+  clearInterval(timer);
+  time=120;
+
+  timer=setInterval(()=>{
+    time--;
+    document.getElementById("timer").innerText="⏱ "+time;
+
+    if(time<=0) submitQuiz();
+  },1000);
+}
+
+/* LOAD QUESTION */
+function loadQ(){
+
+  if(!questions[index]){
+    document.getElementById("quiz").innerHTML="❌ No questions loaded";
+    return;
+  }
+
+  const q = questions[index];
+
+  let html = `<h3>Q${index+1}. ${q.q}</h3>`;
+
+  q.options.forEach(o=>{
+    html += `<div class="option ${answers[index]==o?'selected':''}" onclick="selectOpt(this.innerText)">${o}</div>`;
+  });
+
+  html += `<button onclick="nextQ()">Next</button>`;
+
+  document.getElementById("quiz").innerHTML = html;
+}
+
+/* SELECT */
+function selectOpt(o){
+  answers[index] = o.trim();
+  loadQ();
+}
+
+/* NEXT */
+function nextQ(){
+  if(index < questions.length-1){
+    index++;
+    loadQ();
+  } else {
+    submitQuiz();
+  }
+}
+
+/* SUBMIT */
+function submitQuiz(){
+  clearInterval(timer);
+
+  let score = 0;
+
+  questions.forEach((q,i)=>{
+    if(q.answer === answers[i]) score++;
+  });
+
+  document.getElementById("quiz").innerHTML="";
+  document.getElementById("result").innerHTML = `
+    Score: ${score}/${questions.length}
+    <br><button onclick="showExplain()">Explain</button>
+  `;
+
+  saveScore(score);
+  showChart(score);
+  loadLeaderboard();
+}
+
+/* CHART */
+function showChart(score){
+  new Chart(document.getElementById("chart"),{
+    type:"pie",
+    data:{
+      labels:["Correct","Wrong"],
+      datasets:[{
+        data:[score, questions.length - score]
+      }]
+    }
+  });
+}
+
+/* LEADERBOARD */
+function saveScore(score){
+  let board = JSON.parse(localStorage.getItem("board") || "[]");
+  board.push({user:localStorage.getItem("user") || "Guest",score});
+  localStorage.setItem("board", JSON.stringify(board));
+}
+
+function loadLeaderboard(){
+  let board = JSON.parse(localStorage.getItem("board") || "[]");
+  board.sort((a,b)=>b.score-a.score);
+
+  let html = "<h3>🏆 Leaderboard</h3>";
+  board.slice(0,5).forEach(b=>{
+    html += `<p>${b.user}: ${b.score}</p>`;
+  });
+
+  document.getElementById("result").innerHTML += html;
+}
+
+/* EXPLANATION */
+async function showExplain(){
+
+  let html="";
+
+  for(let i=0;i<questions.length;i++){
+
+    try {
+      const res = await fetch("https://quicktools-backend-1.onrender.com/explain", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          question:questions[i].q,
+          answer:questions[i].answer
+        })
+      });
+
+      const data = await res.json();
+
+      html += `<p>${questions[i].q}<br>💡 ${data.explanation}</p><hr>`;
+
+    } catch {
+      html += `<p>${questions[i].q}<br>⚠️ Explanation failed</p><hr>`;
+    }
+  }
+
+  document.getElementById("result").innerHTML += html;
+}
+
+</script>
+
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+
+</body>
+</html>

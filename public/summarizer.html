@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Summarizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: #eef2ff;
+  margin: 0;
+  padding: 20px;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 800px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+/* TEXTAREA */
+textarea {
+  width: 100%;
+  height: 150px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* BUTTON */
+button {
+  margin-top: 10px;
+  padding: 10px 15px;
+  border: none;
+  background: #4f46e5;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* OUTPUT */
+#output {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  min-height: 100px;
+}
+
+.mode {
+  margin-top: 10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🧠 AI Summarizer</h2>
+
+<textarea id="inputText" placeholder="Paste text here..."></textarea>
+
+<input type="file" id="file" onchange="handleFile()">
+
+<div class="mode">
+  <select id="mode">
+    <option value="short">Short</option>
+    <option value="detailed">Detailed</option>
+    <option value="bullet">Bullet Points</option>
+    <option value="insights">Key Insights</option>
+  </select>
+</div>
+
+<button onclick="summarize()">✨ Summarize</button>
+<button onclick="copyText()">📋 Copy</button>
+<button onclick="downloadText()">📥 Download</button>
+
+<p id="stats"></p>
+
+<div id="output">Your summary will appear here...</div>
+
+</div>
+
+<script>
+
+
+// FILE READ
+function handleFile() {
+  const file = document.getElementById("file").files[0];
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("inputText").value = e.target.result;
+  };
+
+  reader.readAsText(file);
+}
+
+// SUMMARY
+async function summarize() {
+
+  const text = document.getElementById("inputText").value.trim();
+  const mode = document.getElementById("mode").value;
+  const output = document.getElementById("output");
+
+  if (!text) return alert("Enter text!");
+
+  output.innerText = "⏳ Summarizing...";
+
+  let prompt = "";
+
+  if (mode === "short") prompt = "Summarize briefly:\n";
+  if (mode === "detailed") prompt = "Give detailed summary:\n";
+  if (mode === "bullet") prompt = "Summarize in bullet points:\n";
+  if (mode === "insights") prompt = "Give key insights:\n";
+
+  try {
+
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          { role: "system", content: "You are a helpful summarizer." },
+          { role: "user", content: prompt + text }
+        ]
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      output.innerText = "❌ " + data.error.message;
+      return;
+    }
+
+    const result = data.choices[0].message.content;
+
+    output.innerText = result;
+
+    // STATS
+    const words = text.split(" ").length;
+    const time = Math.ceil(words / 200);
+
+    document.getElementById("stats").innerText =
+      `📊 Words: ${words} | ⏱ Read Time: ${time} min`;
+
+  } catch (err) {
+    output.innerText = "Error ❌";
+  }
+}
+
+// COPY
+function copyText() {
+  navigator.clipboard.writeText(document.getElementById("output").innerText);
+}
+
+// DOWNLOAD
+function downloadText() {
+  const blob = new Blob([document.getElementById("output").innerText], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "summary.txt";
+  a.click();
+}
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+</body>
+</html>

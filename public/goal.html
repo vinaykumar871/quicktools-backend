@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goal Tracker</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: #eef2ff;
+  padding: 20px;
+}
+
+.container {
+  max-width: 550px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+h2 { text-align: center; }
+
+.input-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+}
+
+.goal {
+  background: #f9fafb;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.goal.done { opacity: 0.6; }
+
+.goal-title { font-weight: 600; }
+
+.deadline {
+  font-size: 12px;
+  color: gray;
+}
+
+.overdue {
+  color: red;
+  font-weight: bold;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #ddd;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #4f46e5;
+}
+
+.actions { margin-top: 8px; }
+
+.actions button { margin-right: 5px; }
+
+.complete-btn { background: green; }
+.delete-btn { background: crimson; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🎯 Goal Tracker</h2>
+
+<div class="input-box">
+  <input type="text" id="goalInput" placeholder="Enter goal...">
+  <input type="date" id="deadline">
+  <button onclick="addGoal()">Add Goal</button>
+</div>
+
+<div id="goalList"></div>
+
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+
+<script>
+
+// ==========================
+// DATA
+// ==========================
+let goals = [];
+
+// ==========================
+// AUTH CHECK
+// ==========================
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "login.html";
+  } else {
+    loadGoals();
+  }
+});
+
+// ==========================
+// LOAD GOALS (SAFE)
+// ==========================
+function loadGoals() {
+
+  // 🔹 1. Local fallback
+  const local = localStorage.getItem("goals");
+  if (local) {
+    const parsed = JSON.parse(local);
+    goals = parsed.goals || [];
+    renderGoals();
+  }
+
+  // 🔹 2. Firebase real-time
+  listenData("goals", (data) => {
+    if (data && data.goals) {
+      goals = data.goals;
+      renderGoals();
+    }
+  });
+}
+
+// ==========================
+// RENDER
+// ==========================
+function renderGoals() {
+  const list = document.getElementById("goalList");
+  list.innerHTML = "";
+
+  goals.forEach((g, index) => {
+
+    const today = new Date();
+    const deadline = new Date(g.deadline);
+    const overdue = !g.done && deadline < today;
+
+    const div = document.createElement("div");
+    div.className = "goal " + (g.done ? "done" : "");
+
+    div.innerHTML = `
+      <div class="goal-title">${g.text}</div>
+
+      <div class="deadline ${overdue ? "overdue" : ""}">
+        ${overdue ? "⚠ Overdue" : "Deadline: " + g.deadline}
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${g.progress}%"></div>
+      </div>
+
+      <p>${g.progress}% completed</p>
+
+      <input type="range" min="0" max="100" value="${g.progress}"
+        onchange="updateProgress(${index}, this.value)">
+
+      <div class="actions">
+        <button class="complete-btn" onclick="completeGoal(${index})">✔</button>
+        <button class="delete-btn" onclick="deleteGoal(${index})">❌</button>
+      </div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+// ==========================
+// ADD
+// ==========================
+function addGoal() {
+  const text = document.getElementById("goalInput").value.trim();
+  const deadline = document.getElementById("deadline").value;
+
+  if (!text || !deadline) return;
+
+  goals.push({
+    text,
+    deadline,
+    progress: 0,
+    done: false
+  });
+
+  saveData("goals", { goals });
+
+  document.getElementById("goalInput").value = "";
+  document.getElementById("deadline").value = "";
+}
+
+// ==========================
+// UPDATE PROGRESS
+// ==========================
+function updateProgress(index, value) {
+  goals[index].progress = parseInt(value);
+
+  if (value == 100) {
+    goals[index].done = true;
+  }
+
+  saveData("goals", { goals });
+}
+
+// ==========================
+// COMPLETE
+// ==========================
+function completeGoal(index) {
+  goals[index].progress = 100;
+  goals[index].done = true;
+
+  saveData("goals", { goals });
+}
+
+// ==========================
+// DELETE
+// ==========================
+function deleteGoal(index) {
+  goals.splice(index, 1);
+  saveData("goals", { goals });
+}
+
+// ==========================
+// AUTO SAVE
+// ==========================
+autoSaveInput("goalInput", "goalData");
+enableGlobalAutoSave();
+
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

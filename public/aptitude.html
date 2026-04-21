@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aptitude Practice - QuickTools</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+body { font-family:Poppins; background:#eef2ff; }
+.container { max-width:900px; margin:auto; background:white; padding:20px; border-radius:10px; }
+button { padding:10px 15px; background:#4f46e5; color:white; border:none; border-radius:6px; cursor:pointer; }
+</style>
+</head>
+
+<body>
+
+<h1 style="text-align:center;">📘 Aptitude Practice</h1>
+
+<div class="container">
+
+<p>Practice aptitude questions for placements like TCS, Infosys, Accenture.</p>
+
+<!-- ✅ BUTTON -->
+<button onclick="loadAIQuestions('Aptitude')">
+  Generate 50 Questions
+</button>
+
+<!-- ✅ SINGLE CONTAINER -->
+<div id="questions" style="margin-top:20px;"></div>
+
+</div>
+
+<script>
+async function loadAIQuestions(topic){
+
+  document.getElementById("questions").innerHTML = "⏳ Loading 50 AI questions...";
+
+  try {
+    const res = await fetch("https://quicktools-backend-1.onrender.com/generate-quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, level: "medium" })
+    });
+
+    const data = await res.json();
+
+    if (!data.questions) {
+      document.getElementById("questions").innerHTML = "❌ Failed to load";
+      return;
+    }
+
+    let html = "";
+
+    data.questions.forEach((q, i) => {
+      html += `<div style="margin-bottom:20px; padding:10px; border-bottom:1px solid #ddd;">
+        <b>Q${i+1}. ${q.q}</b><br>
+        ${q.options.map(o => `<div>• ${o}</div>`).join("")}
+        <p style="color:green;">✔ Answer: ${q.answer}</p>
+      </div>`;
+    });
+
+    document.getElementById("questions").innerHTML = html;
+
+  } catch {
+    document.getElementById("questions").innerHTML = "⚠ Server error";
+  }
+}
+</script>
+
+</body>
+</html>

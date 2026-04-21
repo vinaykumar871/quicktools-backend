@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- ✅ FIX favicon error -->
+<link rel="icon" href="assets/logo.png">
+
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: #eef2ff;
+  text-align: center;
+  padding: 40px;
+}
+
+.container {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 400px;
+  margin: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* 🎯 CIRCLE */
+.circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(#4f46e5 0%, #ddd 0%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+}
+
+#timer {
+  font-size: 28px;
+  color: #4f46e5;
+}
+
+/* BUTTONS */
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+}
+
+.mode-btn {
+  background: #ddd;
+  color: black;
+}
+
+.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.shortcut-btn {
+  background: green;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>⏱ Pomodoro Timer</h2>
+
+<div class="circle" id="circle">
+  <div id="timer">25:00</div>
+</div>
+
+<br>
+
+<button onclick="startTimer()">Start</button>
+<button onclick="pauseTimer()">Pause</button>
+<button onclick="resetTimer()">Reset</button>
+
+<br><br>
+
+<button class="mode-btn active" onclick="setMode(25, this)">Focus</button>
+<button class="mode-btn" onclick="setMode(5, this)">Short Break</button>
+<button class="mode-btn" onclick="setMode(15, this)">Long Break</button>
+
+<br><br>
+
+<p>🔥 Sessions: <span id="sessions">0</span></p>
+
+<button class="shortcut-btn" onclick="addShortcut()">⭐ Add Shortcut</button>
+
+</div>
+
+<script>
+// ==========================
+// VARIABLES
+// ==========================
+let time = 25 * 60;
+let totalTime = time;
+let timer;
+let running = false;
+let isFocus = true;
+
+const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+
+// 🔓 Unlock audio (important)
+document.body.addEventListener("click", () => {
+  audio.play().then(() => {
+    audio.pause();
+    audio.currentTime = 0;
+  }).catch(()=>{});
+}, { once: true });
+
+// SESSIONS
+let sessions = parseInt(localStorage.getItem("pomodoroSessions")) || 0;
+document.getElementById("sessions").innerText = sessions;
+
+// ==========================
+// DISPLAY
+// ==========================
+function updateDisplay() {
+  let min = Math.floor(time / 60);
+  let sec = time % 60;
+
+  const text = `${min}:${sec < 10 ? "0" : ""}${sec}`;
+  document.getElementById("timer").innerText = text;
+
+  // Progress animation
+  let percent = ((totalTime - time) / totalTime) * 100;
+  document.getElementById("circle").style.background =
+    `conic-gradient(#4f46e5 ${percent}%, #ddd ${percent}%)`;
+}
+
+// ==========================
+// START
+// ==========================
+function startTimer() {
+  if (running) return;
+
+  running = true;
+
+  timer = setInterval(() => {
+
+    if (time <= 0) {
+      clearInterval(timer);
+      running = false;
+
+      // 🔔 SAFE SOUND
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+
+      if (isFocus) {
+        sessions++;
+        localStorage.setItem("pomodoroSessions", sessions);
+        document.getElementById("sessions").innerText = sessions;
+
+        setMode(5); // break
+      } else {
+        setMode(25); // focus
+      }
+
+      return;
+    }
+
+    time--;
+    updateDisplay();
+
+  }, 1000);
+}
+
+// ==========================
+// PAUSE
+// ==========================
+function pauseTimer() {
+  clearInterval(timer);
+  running = false;
+}
+
+// ==========================
+// RESET
+// ==========================
+function resetTimer() {
+  clearInterval(timer);
+  running = false;
+  time = totalTime;
+  updateDisplay();
+}
+
+// ==========================
+// MODE SWITCH
+// ==========================
+function setMode(minutes, btn=null) {
+  clearInterval(timer);
+  running = false;
+
+  time = minutes * 60;
+  totalTime = time;
+
+  isFocus = minutes === 25;
+
+  updateDisplay();
+
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+}
+
+// ==========================
+// SHORTCUT
+// ==========================
+function addShortcut() {
+  let shortcuts = JSON.parse(localStorage.getItem("shortcuts")) || [];
+
+  if (shortcuts.find(s => s.link === "pomodoro.html")) {
+    alert("Already added!");
+    return;
+  }
+
+  shortcuts.push({
+    name: "Pomodoro Timer",
+    link: "pomodoro.html"
+  });
+
+  localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
+
+  alert("Added ⭐");
+}
+
+// INIT
+updateDisplay();
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>

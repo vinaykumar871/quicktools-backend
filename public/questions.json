@@ -1,0 +1,28 @@
+{
+  "python": {
+    "easy": [
+      {
+        "q": "Python is?",
+        "options": ["Language", "OS", "DB", "Browser"],
+        "answer": 0,
+        "exp": "Python is a programming language."
+      }
+    ],
+    "medium": [
+      {
+        "q": "len('Hello')?",
+        "options": ["4", "5", "6", "Error"],
+        "answer": 1,
+        "exp": "Length is 5."
+      }
+    ],
+    "hard": [
+      {
+        "q": "Time complexity of dict?",
+        "options": ["O(n)", "O(log n)", "O(1)", "O(n^2)"],
+        "answer": 2,
+        "exp": "Hash table → O(1)"
+      }
+    ]
+  }
+}

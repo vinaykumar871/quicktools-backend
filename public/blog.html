@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Generator AI - QuickTools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .box {
+      max-width: 800px;
+      margin: 50px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .result {
+      margin-top: 15px;
+      background: #eef2ff;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>📝 Blog Generator AI</h2>
+
+  <input type="text" id="topic" placeholder="Enter blog topic">
+
+  <select id="tone">
+    <option value="professional">Professional</option>
+    <option value="friendly">Friendly</option>
+    <option value="informative">Informative</option>
+  </select>
+
+  <select id="length">
+    <option value="short">Short</option>
+    <option value="medium">Medium</option>
+    <option value="long">Long</option>
+  </select>
+
+  <button onclick="generateBlog()">Generate Blog</button>
+
+  <div class="result" id="output"></div>
+</div>
+
+<script>
+const backend = "https://quicktools-backend-b775.onrender.com";
+
+async function generateBlog() {
+  const topic = document.getElementById("topic").value;
+  const tone = document.getElementById("tone").value;
+  const length = document.getElementById("length").value;
+
+  if (!topic.trim()) return;
+
+  document.getElementById("output").innerText = "⏳ Generating blog...";
+
+  try {
+    const res = await fetch(backend + "/blog", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ topic, tone, length })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("output").innerText = data.blog;
+
+  } catch (err) {
+    document.getElementById("output").innerText = "❌ Error generating blog";
+  }
+}
+</script>
+<script src="utils.js"></script>
+<script>
+autoSaveInput("goalInput", "goalData");
+</script>
+<script>
+enableGlobalAutoSave();
+</script>
+<footer style="text-align:center; margin-top:40px;">
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a> |
+  <a href="terms.html">Terms</a> |
+  <a href="contact.html">Contact</a>
+</footer>
+</body>
+</html>
